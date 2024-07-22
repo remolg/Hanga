@@ -41,14 +41,25 @@ app.post('/register', async (req, res) => {
   }
 
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const query = 'INSERT INTO users (username, email, password) VALUES (?, ?, ?)';
-    db.query(query, [username, email, hashedPassword], (err, result) => {
+    // Check if email already exists
+    const emailQuery = 'SELECT email FROM users WHERE email = ?';
+    db.query(emailQuery, [email], async (err, results) => {
       if (err) {
         return res.status(500).json({ msg: 'Veritabanı hatası', error: err });
       }
-      res.status(201).json({ msg: 'Kullanıcı kaydedildi' });
+      if (results.length > 0) {
+        return res.status(400).json({ msg: 'Bu email zaten kayıtlı' });
+      }
+
+      // Email does not exist, proceed with registration
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const query = 'INSERT INTO users (username, email, password) VALUES (?, ?, ?)';
+      db.query(query, [username, email, hashedPassword], (err, result) => {
+        if (err) {
+          return res.status(500).json({ msg: 'Veritabanı hatası', error: err });
+        }
+        res.status(201).json({ msg: 'Kullanıcı kaydedildi' });
+      });
     });
   } catch (err) {
     res.status(500).json({ msg: 'Sunucu hatası', error: err });
